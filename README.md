@@ -38,8 +38,9 @@ Grok Bot has no command line or API: its bots run on xAI's cloud computer. Two d
 ```
 
 A 2xx answer means the run started, and the wake succeeds with "Sent to Grok Bot (<host>)". Anything else fails the
-wake and says why. A 429 (Grok Bot's limit is 200 runs an hour per routine) counts as the account's limit. Neither
-the key nor the URL's path is ever printed: only its host.
+wake and says why: a redirect is never followed, so the prompt and the key go to the routine's address or nowhere. A
+429 (Grok Bot's limit is 200 runs an hour per routine) counts as the account's limit. Neither the key nor the URL's
+path or query is ever printed, even when the webhook's answer repeats them: only its host.
 
 ## Limits
 

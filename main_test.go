@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 const key = "gbk_test_1234567890"
@@ -81,6 +83,8 @@ func TestRefusalsSayWhyWithoutTheKeyOrPath(t *testing.T) {
 		want   string
 	}{
 		{401, "bad key " + key, "refused the webhook key"},
+		{404, "no route /v1/routines/secret-routine-id/webhook", "no routine at that webhook"},
+		{404, `{"error":"routine secret-routine-id not found"}`, "no routine at that webhook"},
 		{403, "", "refused the webhook key"},
 		{404, "not found", "no routine at that webhook"},
 		{429, "Automation run rate limit exceeded", "rate limit"},
@@ -116,12 +120,51 @@ func TestUnreachableSaysOnlyTheHost(t *testing.T) {
 	}
 }
 
+func TestRedirectsAreNeverFollowed(t *testing.T) {
+	var elsewhere int
+	other := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { elsewhere++ }))
+	defer other.Close()
+	for _, to := range []string{other.URL + "/catch", "/v1/routines/secret-routine-id/webhook2"} {
+		var hits int
+		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hits++
+			http.Redirect(w, r, to, http.StatusTemporaryRedirect)
+		}))
+		u, _ := url.Parse(ts.URL + "/v1/routines/secret-routine-id/webhook")
+		c := ts.Client()
+		c.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true // other's certificate too
+		_, err := send(context.Background(), c, hook{url: u, key: key}, "hi")
+		ts.Close()
+		if err == nil || !strings.Contains(err.Error(), "redirect") || !strings.Contains(err.Error(), "HTTP 307") {
+			t.Fatalf("%s: %v", to, err)
+		}
+		if hits != 1 {
+			t.Fatalf("%s: followed (%d requests)", to, hits)
+		}
+	}
+	if elsewhere != 0 {
+		t.Fatalf("another host got %d requests", elsewhere)
+	}
+}
+
 func TestQuoteIsShortAndOneLine(t *testing.T) {
-	q := quote([]byte(strings.Repeat("a\n", 300)), "")
+	u, _ := url.Parse("https://a.example/v1/routines/secret-routine-id/webhook?sig=abc123")
+	h := hook{url: u, key: key}
+	q := quote([]byte(strings.Repeat("a\n", 300)), h)
 	if strings.Contains(q, "\n") || len(q) > 210 {
 		t.Fatalf("%q", q)
 	}
-	if quote(nil, key) != "" {
+	if quote(nil, h) != "" {
 		t.Fatal("empty answer quoted")
+	}
+	q = quote([]byte("at "+u.Path+"?sig=abc123 for secret-routine-id with "+base64.StdEncoding.EncodeToString([]byte(key))), h)
+	for _, secret := range []string{"secret-routine-id", "abc123", key, base64.StdEncoding.EncodeToString([]byte(key))} {
+		if strings.Contains(q, secret) {
+			t.Fatalf("%q shows %q", q, secret)
+		}
+	}
+	q = quote([]byte(strings.Repeat("é", 150)), h)
+	if !utf8.ValidString(q) {
+		t.Fatalf("cut a character in half: %q", q)
 	}
 }

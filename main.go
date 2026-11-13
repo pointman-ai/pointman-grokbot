@@ -10,6 +10,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var version = "dev"
@@ -51,8 +53,11 @@ func parseHook(v string) (hook, error) {
 	return hook{url: u, key: parts[1]}, nil
 }
 
-// send POSTs the prompt and says what happened: a line for the run's result, or an error for its failure.
-func send(ctx context.Context, c *http.Client, h hook, prompt string) (string, error) {
+// send POSTs the prompt and says what happened: a line for the run's result, or an error for its failure. A redirect
+// is never followed, whatever client it's given: the prompt and the key go to the routine's address or nowhere.
+func send(ctx context.Context, client *http.Client, h hook, prompt string) (string, error) {
+	c := *client
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	body, err := json.Marshal(map[string]string{"source": "pointman", "prompt": prompt})
 	if err != nil {
 		return "", err
@@ -78,7 +83,7 @@ func send(ctx context.Context, c *http.Client, h hook, prompt string) (string, e
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return fmt.Sprintf("Sent to Grok Bot (%s): it answers on the board itself.", h.url.Host), nil
 	}
-	return "", fmt.Errorf("%s (HTTP %d%s)", why(resp.StatusCode), resp.StatusCode, quote(said, h.key))
+	return "", fmt.Errorf("%s (HTTP %d%s)", why(resp.StatusCode), resp.StatusCode, quote(said, h))
 }
 
 // why says what a refusal means for the person, in the words the node's limit check looks for where it's a limit.
@@ -90,6 +95,8 @@ func why(status int) string {
 		return "Grok Bot has no routine at that webhook: check the routine still has its webhook trigger, then /grokbot add"
 	case status == http.StatusTooManyRequests:
 		return "Grok Bot's rate limit for routine runs was reached"
+	case status >= 300 && status < 400:
+		return "Grok Bot's webhook answered with a redirect, which isn't followed: check the routine's webhook address, then /grokbot add"
 	case status >= 500:
 		return "Grok Bot's webhook failed on its side"
 	default:
@@ -97,14 +104,32 @@ func why(status int) string {
 	}
 }
 
-// quote is what the webhook answered, on one line and short, with the key taken out if it's in there.
-func quote(said []byte, key string) string {
+// quote is what the webhook answered, on one line and short, with the key and every part of the URL's path and query
+// taken out if they're in there: only the host may show.
+func quote(said []byte, h hook) string {
 	s := strings.Join(strings.Fields(string(said)), " ")
-	if key != "" {
-		s = strings.ReplaceAll(s, key, "…")
+	var secret []string
+	if h.key != "" {
+		secret = append(secret, h.key, base64.StdEncoding.EncodeToString([]byte(h.key)),
+			base64.RawURLEncoding.EncodeToString([]byte(h.key)))
+	}
+	if h.url != nil {
+		secret = append(secret, h.url.RawQuery, h.url.EscapedPath(), h.url.Path)
+		for _, part := range strings.FieldsFunc(h.url.Path, func(r rune) bool { return r == '/' }) {
+			secret = append(secret, part, url.PathEscape(part))
+		}
+	}
+	for _, x := range secret {
+		if x != "" && x != "/" {
+			s = strings.ReplaceAll(s, x, "…")
+		}
 	}
 	if len(s) > 200 {
-		s = s[:200] + "…"
+		cut := 200
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut--
+		}
+		s = s[:cut] + "…"
 	}
 	if s == "" {
 		return ""
