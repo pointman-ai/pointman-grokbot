@@ -1,0 +1,54 @@
+[extension]
+id = "grokbot"
+name = "Grok Bot"
+version = "0.1.0"
+node = ">=0.4.17"
+publisher = "aurelio"
+summary = "xAI's Grok Bot as an agent: each wake starts one of its routines by webhook, and it answers with Pointman's tools."
+
+# Grok Bot has no command line or API: its bots run on xAI's cloud computer. The one way in is a routine's webhook
+# trigger, so each wake runs grokbot-wake, which POSTs the wake's prompt there and ends when Grok Bot says the run
+# started. The Bot answers on the board itself, through Pointman added as a custom connector (README).
+[client]
+binaries = ["grokbot-wake"]
+protocol = "text"
+api_keys = ["GROKBOT_WEBHOOK"]
+
+[client.install]
+from = "release"
+repo = "pointman-ai/pointman-grokbot"
+asset = "grokbot-wake-{platform}.tar.gz"
+
+[client.sign_in]
+how = "/grokbot add"
+
+[client.run]
+prompt = "stdin"
+args = []
+
+# Added once in the apps; the node opens a fresh machine seal for every agent run.
+[client.key]
+secret = "grokbot.key"
+env = "GROKBOT_WEBHOOK"
+
+[client.limits]
+words = ["rate limit"]
+
+[permissions]
+secrets = ["grokbot.key"]
+
+[[credentials]]
+id = "webhook"
+title = "Grok Bot routine webhook"
+help = "In Grok Bot, open the routine's Webhook section. Paste its POST to address, a space, then its key. Pointman seals them in the vault and gives them only to this client's runs."
+item = "grokbot.key"
+value = '^https://\S+ \S{8,512}$'
+placeholder = "https://… key"
+
+[[commands]]
+kind = "grokbot.add"
+title = "Add a Grok Bot routine's webhook"
+params = { type = "object", properties = {}, additionalProperties = false }
+slash = "add"
+form = "webhook"
+summary = "Connect Grok Bot once for every agent on this machine"
