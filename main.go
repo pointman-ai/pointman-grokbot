@@ -10,7 +10,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,7 +19,6 @@ import (
 	"os"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 var version = "dev"
@@ -78,12 +76,11 @@ func send(ctx context.Context, client *http.Client, h hook, prompt string) (stri
 		}
 		return "", fmt.Errorf("couldn't reach Grok Bot's webhook at %s: %v", h.url.Host, err)
 	}
-	defer resp.Body.Close()
-	said, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	resp.Body.Close() // never read: an answer can repeat the URL or the key, and its words aren't the account's
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return fmt.Sprintf("Sent to Grok Bot (%s): it answers on the board itself.", h.url.Host), nil
 	}
-	return "", fmt.Errorf("%s (HTTP %d%s)", why(resp.StatusCode), resp.StatusCode, quote(said, h))
+	return "", fmt.Errorf("%s (HTTP %d)", why(resp.StatusCode), resp.StatusCode)
 }
 
 // why says what a refusal means for the person, in the words the node's limit check looks for where it's a limit.
@@ -102,39 +99,6 @@ func why(status int) string {
 	default:
 		return "Grok Bot didn't start the routine: check it isn't paused"
 	}
-}
-
-// quote is what the webhook answered, on one line and short, with the key and every part of the URL's path and query
-// taken out if they're in there: only the host may show.
-func quote(said []byte, h hook) string {
-	s := strings.Join(strings.Fields(string(said)), " ")
-	var secret []string
-	if h.key != "" {
-		secret = append(secret, h.key, base64.StdEncoding.EncodeToString([]byte(h.key)),
-			base64.RawURLEncoding.EncodeToString([]byte(h.key)))
-	}
-	if h.url != nil {
-		secret = append(secret, h.url.RawQuery, h.url.EscapedPath(), h.url.Path)
-		for _, part := range strings.FieldsFunc(h.url.Path, func(r rune) bool { return r == '/' }) {
-			secret = append(secret, part, url.PathEscape(part))
-		}
-	}
-	for _, x := range secret {
-		if x != "" && x != "/" {
-			s = strings.ReplaceAll(s, x, "…")
-		}
-	}
-	if len(s) > 200 {
-		cut := 200
-		for cut > 0 && !utf8.RuneStart(s[cut]) {
-			cut--
-		}
-		s = s[:cut] + "…"
-	}
-	if s == "" {
-		return ""
-	}
-	return ": " + s
 }
 
 func main() {

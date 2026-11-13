@@ -42,7 +42,7 @@ id = "webhook"
 title = "Grok Bot routine webhook"
 help = "In Grok Bot, open the routine's Webhook section. Paste its POST to address, a space, then its key. Pointman seals them in the vault and gives them only to this client's runs."
 item = "grokbot.key"
-value = '^https://\S+ \S{8,512}$'
+value = '^https://[^\s/@]+(/\S*)? +\S{8,512}$'
 placeholder = "https://… key"
 
 [[commands]]

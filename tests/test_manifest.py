@@ -47,9 +47,13 @@ class ManifestContract(unittest.TestCase):
 
     def test_the_form_takes_an_https_address_then_a_key(self):
         value = re.compile(self.manifest["credentials"][0]["value"])
-        self.assertTrue(value.fullmatch("https://api.x.ai/v1/routines/r_1/webhook gbk_0123456789"))
+        for good in ("https://api.x.ai/v1/routines/r_1/webhook gbk_0123456789",
+                     "https://api.x.ai/v1/routines/r_1/webhook  gbk_0123456789", "https://api.x.ai gbk_0123456789"):
+            self.assertTrue(value.fullmatch(good), good)
+        # what grokbot-wake's parseHook refuses, the form refuses too
         for bad in ("https://api.x.ai/hook", "gbk_0123456789", "http://api.x.ai/hook gbk_0123456789",
-                    "https://api.x.ai/hook short", "https://a.example/hook key1234 extra"):
+                    "https://api.x.ai/hook short", "https://a.example/hook key1234 extra",
+                    "https://user:pw@a.example/hook key12345678"):
             self.assertIsNone(value.fullmatch(bad), bad)
 
     def test_rate_limits_count_as_the_accounts(self):

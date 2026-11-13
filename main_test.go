@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 )
 
 const key = "gbk_test_1234567890"
@@ -144,27 +142,5 @@ func TestRedirectsAreNeverFollowed(t *testing.T) {
 	}
 	if elsewhere != 0 {
 		t.Fatalf("another host got %d requests", elsewhere)
-	}
-}
-
-func TestQuoteIsShortAndOneLine(t *testing.T) {
-	u, _ := url.Parse("https://a.example/v1/routines/secret-routine-id/webhook?sig=abc123")
-	h := hook{url: u, key: key}
-	q := quote([]byte(strings.Repeat("a\n", 300)), h)
-	if strings.Contains(q, "\n") || len(q) > 210 {
-		t.Fatalf("%q", q)
-	}
-	if quote(nil, h) != "" {
-		t.Fatal("empty answer quoted")
-	}
-	q = quote([]byte("at "+u.Path+"?sig=abc123 for secret-routine-id with "+base64.StdEncoding.EncodeToString([]byte(key))), h)
-	for _, secret := range []string{"secret-routine-id", "abc123", key, base64.StdEncoding.EncodeToString([]byte(key))} {
-		if strings.Contains(q, secret) {
-			t.Fatalf("%q shows %q", q, secret)
-		}
-	}
-	q = quote([]byte(strings.Repeat("é", 150)), h)
-	if !utf8.ValidString(q) {
-		t.Fatalf("cut a character in half: %q", q)
 	}
 }
