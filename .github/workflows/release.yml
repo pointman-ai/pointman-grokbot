@@ -1,0 +1,29 @@
+name: Release builds
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - run: scripts/build.sh "${GITHUB_REF_NAME#v}"
+      - name: Attach the builds to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # The release may already exist (made at the merge): attach to it, whichever came first.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.tar.gz --clobber
+          else
+            gh release create "$TAG" dist/*.tar.gz --title "${TAG#v}" --notes "grokbot-wake builds for macOS and Linux."
+          fi
