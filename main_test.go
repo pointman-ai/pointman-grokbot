@@ -15,19 +15,18 @@ import (
 const key = "gbk_test_1234567890"
 
 func TestParseHook(t *testing.T) {
-	h, err := parseHook("https://api.example.com/v1/routines/r1/webhook " + key)
+	h, err := parseHook("https://api.example.com/v1/routines/r1/webhook", key)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if h.url.Host != "api.example.com" || h.key != key {
 		t.Fatalf("got %v %q", h.url, h.key)
 	}
-	for _, bad := range []string{
-		"", "   ", "https://a.example/hook", "https://a.example/hook k extra",
-		"http://a.example/hook " + key, "ftp://a.example " + key, "https:///nohost " + key,
-		"https://user:pw@a.example/hook " + key, "notaurl " + key,
+	for _, bad := range [][2]string{
+		{"", key}, {"https://a.example/hook", ""}, {"   ", key}, {"http://a.example/hook", key},
+		{"ftp://a.example", key}, {"https:///nohost", key}, {"https://user:pw@a.example/hook", key}, {"notaurl", key},
 	} {
-		if _, err := parseHook(bad); err == nil {
+		if _, err := parseHook(bad[0], bad[1]); err == nil {
 			t.Errorf("%q: accepted", bad)
 		} else if strings.Contains(err.Error(), key) {
 			t.Errorf("%q: error shows the key", bad)
