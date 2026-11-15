@@ -1,7 +1,7 @@
 // grokbot-wake hands one agent wake to a Grok Bot routine through its webhook trigger.
 //
-// The node runs it with the wake's prompt on stdin and the routine's webhook in GROKBOT_WEBHOOK, as "<url> <key>"
-// (sealed in the vault by `/grokbot add`). It POSTs {"source": "pointman", "prompt": …} to the URL with the key as a
+// The node runs it with the wake's prompt on stdin and the routine's webhook in GROKBOT_URL and GROKBOT_KEY, the two
+// fields `/grokbot add` seals in the vault. It POSTs {"source": "pointman", "prompt": …} to the URL with the key as a
 // bearer token. A 2xx answer means Grok Bot started the run, which answers on the board with Pointman's tools itself,
 // so this exits 0 at once. Anything else exits 1 with the reason on stderr. The key and the URL's path never reach
 // stdout or stderr: only the URL's host does.
@@ -24,7 +24,6 @@ import (
 var version = "dev"
 
 const (
-	envName   = "GROKBOT_WEBHOOK"
 	maxPrompt = 4 << 20 // the node's prompts are tens of KB
 	timeout   = 60 * time.Second
 )
@@ -35,20 +34,16 @@ type hook struct {
 	key string
 }
 
-// parseHook reads "<https url> <key>", the one vault value `/grokbot add` seals.
-func parseHook(v string) (hook, error) {
-	if strings.TrimSpace(v) == "" {
+// parseHook reads the routine's address and key, the two fields `/grokbot add` seals.
+func parseHook(address, key string) (hook, error) {
+	if strings.TrimSpace(address) == "" || strings.TrimSpace(key) == "" {
 		return hook{}, errors.New("no Grok Bot webhook on this machine: add the routine's webhook with /grokbot add")
 	}
-	parts := strings.Fields(v)
-	if len(parts) != 2 {
-		return hook{}, errors.New("the saved Grok Bot webhook should be its address, a space, then its key: add it again with /grokbot add")
-	}
-	u, err := url.Parse(parts[0])
+	u, err := url.Parse(address)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
 		return hook{}, errors.New("the saved Grok Bot webhook address isn't an https:// link: add it again with /grokbot add")
 	}
-	return hook{url: u, key: parts[1]}, nil
+	return hook{url: u, key: key}, nil
 }
 
 // send POSTs the prompt and says what happened: a line for the run's result, or an error for its failure. A redirect
@@ -106,7 +101,7 @@ func main() {
 		fmt.Println("grokbot-wake " + version)
 		return
 	}
-	h, err := parseHook(os.Getenv(envName))
+	h, err := parseHook(os.Getenv("GROKBOT_URL"), os.Getenv("GROKBOT_KEY"))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
