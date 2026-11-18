@@ -1,8 +1,8 @@
 [extension]
 id = "grokbot"
 name = "Grok Bot"
-version = "0.1.1"
-node = ">=0.4.18"
+version = "0.1.2"
+node = ">=0.4.19"
 publisher = "aurelio"
 summary = "xAI's Grok Bot as an agent: each wake starts one of its routines by webhook, and it answers with Pointman's tools."
 
@@ -40,7 +40,7 @@ secrets = ["grokbot.key"]
 [[credentials]]
 id = "webhook"
 title = "Grok Bot routine webhook"
-help = "In Grok Bot, open the routine's Webhook section and copy its two values. Pointman seals them in the vault and gives them only to this client's runs."
+help = "In Grok Bot, open the routine's Webhook section and copy its two values. Pointman seals them in the vault and gives them only to this client's runs. Named after an agent, they are that agent's alone."
 item = "grokbot.key"
 
 [[credentials.fields]]
@@ -61,4 +61,4 @@ title = "Add a Grok Bot routine's webhook"
 params = { type = "object", properties = {}, additionalProperties = false }
 slash = "add"
 form = "webhook"
-summary = "Connect Grok Bot once for every agent on this machine"
+summary = "Connect a Grok Bot routine: `/grokbot add <agent>` gives that agent a routine of its own"

@@ -17,8 +17,8 @@ class ManifestContract(unittest.TestCase):
         ext = self.manifest["extension"]
         self.assertEqual((ext["id"], ext["name"], ext["publisher"]), ("grokbot", "Grok Bot", "aurelio"))
         self.assertRegex(ext["version"], r"^\d+\.\d+\.\d+$")
-        # 0.4.18: a client key form with fields gives its run each value by name
-        self.assertEqual(ext["node"], ">=0.4.18")
+        # 0.4.19: an agent with its own grokbot.key.<handle> runs on it (0.4.18: a key form's fields by name)
+        self.assertEqual(ext["node"], ">=0.4.19")
 
     def test_one_text_run_per_wake_with_the_prompt_on_stdin(self):
         self.assertEqual(self.client["protocol"], "text")
