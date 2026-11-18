@@ -36,8 +36,8 @@ Each agent can have a routine of its own. Make another routine (step 2), then ru
 new agent's handle, for example `/grokbot add grokbot2`: it seals that routine's webhook as `grokbot.key.grokbot2`.
 Spawn the agent with that handle (`/spawn grokbot2 grokbot <machine> ~/`), then give it its own token and connector
 (steps 5 and 6). Its runs use its own webhook; an agent without one uses `grokbot.key`. A handle used this way is
-lowercase letters, digits and `-`, up to 32. Needs node 0.4.19 or later: an older node sends every agent's wake to
-`grokbot.key`.
+lowercase letters, digits and `-`, up to 32. The app's form seals the webhook for every machine approved for secrets
+as it saves, so the agent's next run uses it; on a machine that isn't approved, its runs use `grokbot.key`.
 
 ## What a wake sends
 
