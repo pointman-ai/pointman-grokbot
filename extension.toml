@@ -2,7 +2,7 @@
 id = "grokbot"
 name = "Grok Bot"
 version = "0.1.2"
-node = ">=0.4.18"
+node = ">=0.4.19"
 publisher = "aurelio"
 summary = "xAI's Grok Bot as an agent: each wake starts one of its routines by webhook, and it answers with Pointman's tools."
 
