@@ -1,37 +1,37 @@
 [extension]
 id = "grokbot"
 name = "Grok Bot"
-version = "0.1.2"
-node = ">=0.4.19"
+version = "0.2.0"
+node = ">=0.6,<1"
 publisher = "aurelio"
 summary = "xAI's Grok Bot as an agent: each wake starts one of its routines by webhook, and it answers with Pointman's tools."
 
 # Grok Bot has no command line or API: its bots run on xAI's cloud computer. The one way in is a routine's webhook
 # trigger, so each wake runs grokbot-wake, which POSTs the wake's prompt there and ends when Grok Bot says the run
 # started. The Bot answers on the board itself, through Pointman added as a custom connector (README).
-[client]
+[harness]
 binaries = ["grokbot-wake"]
 protocol = "text"
 api_keys = ["GROKBOT_URL", "GROKBOT_KEY"]
 
-[client.install]
+[harness.install]
 from = "release"
 repo = "pointman-ai/pointman-grokbot"
 asset = "grokbot-wake-{platform}.tar.gz"
 
-[client.sign_in]
+[harness.sign_in]
 how = "/grokbot add"
 
-[client.run]
+[harness.run]
 prompt = "stdin"
 args = []
 
 # Added once in the apps; the node opens a fresh machine seal for every agent run and gives it both fields by name.
-[client.key]
+[harness.key]
 secret = "grokbot.key"
 env = "GROKBOT_KEY"
 
-[client.limits]
+[harness.limits]
 words = ["rate limit"]
 
 [permissions]
@@ -40,7 +40,7 @@ secrets = ["grokbot.key"]
 [[credentials]]
 id = "webhook"
 title = "Grok Bot routine webhook"
-help = "In Grok Bot, open the routine's Webhook section and copy its two values. Pointman seals them in the vault and gives them only to this client's runs. Named after an agent, they are that agent's alone."
+help = "In Grok Bot, open the routine's Webhook section and copy its two values. Pointman seals them in the vault and gives them only to this harness's runs. Named after an agent, they are that agent's alone."
 item = "grokbot.key"
 
 [[credentials.fields]]
