@@ -1,6 +1,6 @@
 # Icon source
 
-The vendor mark is used to identify its agent client in Pointman.
+The vendor mark is used to identify its agent harness in Pointman.
 
 Source: Grok Bot's own app icon, `Grok Bot.app/Contents/Resources/icon.icns` in the macOS app, version 0.79.3
 (bundle `com.anysphere.sand`). Its largest picture is 256×256.

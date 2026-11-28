@@ -11,33 +11,33 @@ class ManifestContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.manifest = tomllib.loads((ROOT / "extension.toml").read_text())
-        cls.client = cls.manifest["client"]
+        cls.harness = cls.manifest["harness"]
 
     def test_extension(self):
         ext = self.manifest["extension"]
         self.assertEqual((ext["id"], ext["name"], ext["publisher"]), ("grokbot", "Grok Bot", "aurelio"))
         self.assertRegex(ext["version"], r"^\d+\.\d+\.\d+$")
         # 0.4.19: an agent with its own grokbot.key.<handle> runs on it (0.4.18: a key form's fields by name)
-        self.assertEqual(ext["node"], ">=0.4.19")
+        self.assertEqual(ext["node"], ">=0.6,<1")
 
     def test_one_text_run_per_wake_with_the_prompt_on_stdin(self):
-        self.assertEqual(self.client["protocol"], "text")
-        self.assertEqual(self.client["binaries"], ["grokbot-wake"])
-        self.assertEqual(self.client["run"], {"prompt": "stdin", "args": []})
-        self.assertNotIn("home_env", self.client)
-        self.assertNotIn("mcp", self.client)  # the Bot reaches the board through its own connector
+        self.assertEqual(self.harness["protocol"], "text")
+        self.assertEqual(self.harness["binaries"], ["grokbot-wake"])
+        self.assertEqual(self.harness["run"], {"prompt": "stdin", "args": []})
+        self.assertNotIn("home_env", self.harness)
+        self.assertNotIn("mcp", self.harness)  # the Bot reaches the board through its own connector
 
     def test_installs_this_repos_release_build(self):
-        self.assertEqual(self.client["install"], {"from": "release", "repo": "pointman-ai/pointman-grokbot",
+        self.assertEqual(self.harness["install"], {"from": "release", "repo": "pointman-ai/pointman-grokbot",
                                                   "asset": "grokbot-wake-{platform}.tar.gz"})
         build = (ROOT / "scripts/build.sh").read_text()
         for platform in ("darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64"):
             self.assertIn(platform, build)
 
     def test_one_vault_form_supplies_every_agents_run(self):
-        self.assertEqual(self.client["api_keys"], ["GROKBOT_URL", "GROKBOT_KEY"])
-        self.assertEqual(self.client["key"], {"secret": "grokbot.key", "env": "GROKBOT_KEY"})
-        self.assertEqual(self.client["sign_in"], {"how": "/grokbot add"})
+        self.assertEqual(self.harness["api_keys"], ["GROKBOT_URL", "GROKBOT_KEY"])
+        self.assertEqual(self.harness["key"], {"secret": "grokbot.key", "env": "GROKBOT_KEY"})
+        self.assertEqual(self.harness["sign_in"], {"how": "/grokbot add"})
         self.assertEqual(self.manifest["permissions"]["secrets"], ["grokbot.key"])
         (cred,) = self.manifest["credentials"]
         self.assertEqual((cred["id"], cred["item"]), ("webhook", "grokbot.key"))
@@ -49,8 +49,8 @@ class ManifestContract(unittest.TestCase):
         cred = self.manifest["credentials"][0]
         self.assertNotIn("value", cred)
         url, key = cred["fields"]
-        # every field is one the node hands the run: the client's api_keys name them all
-        self.assertEqual([url["name"], key["name"]], self.client["api_keys"])
+        # every field is one the node hands the run: the harness's api_keys name them all
+        self.assertEqual([url["name"], key["name"]], self.harness["api_keys"])
         self.assertEqual((url.get("plain"), key.get("plain", False)), (True, False))
         address = re.compile(url["value"])
         for good in ("https://api.x.ai/v1/routines/r_1/webhook", "https://api.x.ai"):
@@ -65,7 +65,7 @@ class ManifestContract(unittest.TestCase):
             self.assertIsNone(secret.fullmatch(bad), bad)
 
     def test_rate_limits_count_as_the_accounts(self):
-        self.assertIn("rate limit", self.client["limits"]["words"])
+        self.assertIn("rate limit", self.harness["limits"]["words"])
         self.assertIn("rate limit", (ROOT / "main.go").read_text())
 
 
